@@ -143,6 +143,7 @@ NRC Labs
 
 def _send(msg: MIMEMultipart, to_email: str):
     """Send email via Gmail SMTP."""
-    with smtplib.SMTP_SSL("smtp.gmail.com", 465) as server:
+    with smtplib.SMTP("smtp.gmail.com", 587) as server:
+        server.starttls()
         server.login(GMAIL_ADDRESS, GMAIL_APP_PASSWORD)
         server.sendmail(GMAIL_ADDRESS, to_email, msg.as_string())
