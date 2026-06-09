@@ -1,6 +1,6 @@
 from fastapi import FastAPI, Request, Form, Query
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse, RedirectResponse
+from fastapi.responses import JSONResponse, HTMLResponse
 import uuid
 import json
 import httpx
@@ -63,10 +63,7 @@ async def handle_cv_request(request: Request):
     # Notify via Telegram
     await send_cv_request_notification(request_id, name, email, note)
 
-    # Redirect to thank you page
-    if redirect_url:
-        return RedirectResponse(url=redirect_url, status_code=303)
-    return JSONResponse({"status": "received", "id": request_id})
+    return _thank_you_page("CV Request Sent!", "Your request has been received. I'll review it and send my CV to your inbox shortly.")
 
 
 @app.post("/webhook/book-call")
@@ -93,10 +90,7 @@ async def handle_book_call(request: Request):
     # Notify via Telegram
     await send_booking_notification(request_id, name, email, subject, message)
 
-    # Redirect to thank you page
-    if redirect_url:
-        return RedirectResponse(url=redirect_url, status_code=303)
-    return JSONResponse({"status": "received", "id": request_id})
+    return _thank_you_page("Inquiry Sent!", "Your booking request has been received. I'll get back to you within 24 hours.")
 
 
 # ==================== TELEGRAM CALLBACK HANDLER ====================
@@ -228,6 +222,75 @@ async def available_slots():
 @app.get("/health")
 async def health():
     return {"status": "ok", "telegram": bool(TELEGRAM_BOT_TOKEN)}
+
+
+def _thank_you_page(title: str, message: str) -> HTMLResponse:
+    """Return a styled thank you page matching NRC Labs branding."""
+    html = f"""<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{title} — NRC Labs</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800;900&display=swap" rel="stylesheet">
+    <style>
+        * {{ margin:0; padding:0; box-sizing:border-box; }}
+        body {{
+            font-family:'Inter',system-ui,sans-serif;
+            background:#08080f; color:#f1f5f9;
+            min-height:100vh; display:flex; align-items:center; justify-content:center;
+            overflow:hidden;
+        }}
+        .card {{
+            text-align:center; max-width:480px; padding:48px 40px;
+            background:rgba(15,15,30,0.9); border:1px solid rgba(168,85,247,0.2);
+            border-radius:20px; box-shadow:0 0 60px rgba(168,85,247,0.15);
+            animation:fadeUp .5s ease;
+        }}
+        @keyframes fadeUp {{
+            from {{ opacity:0; transform:translateY(20px); }}
+            to {{ opacity:1; transform:translateY(0); }}
+        }}
+        .icon {{
+            width:72px; height:72px; margin:0 auto 24px;
+            background:linear-gradient(135deg,#a855f7,#6d28d9);
+            border-radius:50%; display:flex; align-items:center; justify-content:center;
+            font-size:2rem; box-shadow:0 0 30px rgba(168,85,247,0.4);
+        }}
+        h1 {{
+            font-size:1.8rem; font-weight:900; margin-bottom:12px;
+            background:linear-gradient(135deg,#a855f7,#00d4ff);
+            -webkit-background-clip:text; -webkit-text-fill-color:transparent;
+        }}
+        p {{ color:#8892a8; font-size:1rem; line-height:1.7; margin-bottom:28px; }}
+        .btn {{
+            display:inline-block; padding:14px 32px; border-radius:999px;
+            font-weight:700; font-size:.9rem; text-decoration:none;
+            background:linear-gradient(135deg,#a855f7,#6d28d9); color:#fff;
+            box-shadow:0 8px 28px rgba(168,85,247,0.35); transition:all .2s;
+        }}
+        .btn:hover {{ transform:translateY(-2px); box-shadow:0 12px 36px rgba(168,85,247,0.45); }}
+        .glow {{
+            position:fixed; width:300px; height:300px; border-radius:50%;
+            background:radial-gradient(circle,rgba(168,85,247,0.15),transparent 70%);
+            pointer-events:none;
+        }}
+        .glow-1 {{ top:-100px; left:-100px; }}
+        .glow-2 {{ bottom:-100px; right:-100px; }}
+    </style>
+</head>
+<body>
+    <div class="glow glow-1"></div>
+    <div class="glow glow-2"></div>
+    <div class="card">
+        <div class="icon">✓</div>
+        <h1>{title}</h1>
+        <p>{message}</p>
+        <a href="https://nidarifda.github.io/Portofolio/" class="btn">← Back to Portfolio</a>
+    </div>
+</body>
+</html>"""
+    return HTMLResponse(content=html)
 
 
 if __name__ == "__main__":
