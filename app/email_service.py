@@ -71,7 +71,7 @@ def send_cv_email(to_email: str, to_name: str):
 Thank you for your interest in working together! As requested, please find my CV attached.
 
 I'd love to discuss how I can help with your project. Feel free to book a free consultation at:
-https://nidarifda.github.io/Portofolio/#contact
+https://nidalabs.vercel.app/#contact
 
 Looking forward to connecting!
 
@@ -169,7 +169,7 @@ def send_decline_email(to_email: str, to_name: str, request_type: str = "cv"):
 Thank you for reaching out! Unfortunately, I'm unable to share my CV at this time.
 
 Feel free to check out my portfolio and projects at:
-https://nidarifda.github.io/Portofolio/
+https://nidalabs.vercel.app/
 
 Best regards,
 Nida Rifda Chairuli
@@ -182,7 +182,7 @@ NRC Labs
 Thank you for your interest in booking a consultation. Unfortunately, I'm not available at this time.
 
 I'll reach out when my schedule opens up. In the meantime, feel free to explore my work at:
-https://nidarifda.github.io/Portofolio/
+https://nidalabs.vercel.app/
 
 Best regards,
 Nida Rifda Chairuli

@@ -286,7 +286,7 @@ def _thank_you_page(title: str, message: str) -> HTMLResponse:
         <div class="icon">✓</div>
         <h1>{title}</h1>
         <p>{message}</p>
-        <a href="https://nidarifda.github.io/Portofolio/" class="btn">← Back to Portfolio</a>
+        <a href="https://nidalabs.vercel.app/" class="btn">← Back to Portfolio</a>
     </div>
 </body>
 </html>"""
