@@ -1,10 +1,62 @@
-import smtplib
+"""Email service using Gmail API (OAuth2) instead of SMTP.
+This works on Render's free tier where SMTP ports are blocked.
+"""
+import base64
+import json
+import os
+import urllib.parse
+import urllib.request
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 from email.mime.base import MIMEBase
 from email import encoders
-import os
-from app.config import GMAIL_ADDRESS, GMAIL_APP_PASSWORD, SENDER_NAME, CV_FILE_PATH
+
+from app.config import (
+    GMAIL_ADDRESS, GMAIL_CLIENT_ID, GMAIL_CLIENT_SECRET,
+    GMAIL_REFRESH_TOKEN, SENDER_NAME, CV_FILE_PATH,
+)
+
+TOKEN_URL = "https://oauth2.googleapis.com/token"
+GMAIL_SEND_URL = "https://gmail.googleapis.com/gmail/v1/users/me/messages/send"
+
+
+def _get_access_token() -> str:
+    """Get a fresh access token using the refresh token."""
+    data = urllib.parse.urlencode({
+        "client_id": GMAIL_CLIENT_ID,
+        "client_secret": GMAIL_CLIENT_SECRET,
+        "refresh_token": GMAIL_REFRESH_TOKEN,
+        "grant_type": "refresh_token",
+    }).encode()
+
+    req = urllib.request.Request(TOKEN_URL, data=data)
+    resp = urllib.request.urlopen(req)
+    tokens = json.loads(resp.read())
+    return tokens["access_token"]
+
+
+def _send_via_gmail_api(msg: MIMEMultipart, to_email: str):
+    """Send email via Gmail API (HTTP POST, not SMTP)."""
+    # Encode the email as base64url
+    raw_message = base64.urlsafe_b64encode(msg.as_bytes()).decode("utf-8")
+
+    # Get fresh access token
+    access_token = _get_access_token()
+
+    # Send via Gmail API
+    body = json.dumps({"raw": raw_message}).encode("utf-8")
+    req = urllib.request.Request(
+        GMAIL_SEND_URL,
+        data=body,
+        headers={
+            "Authorization": f"Bearer {access_token}",
+            "Content-Type": "application/json",
+        },
+    )
+    resp = urllib.request.urlopen(req)
+    result = json.loads(resp.read())
+    print(f"Email sent to {to_email} | Message ID: {result.get('id', 'unknown')}")
+    return result
 
 
 def send_cv_email(to_email: str, to_name: str):
@@ -41,7 +93,7 @@ NRC Labs | AI Automation & Data Intelligence
             )
             msg.attach(part)
 
-    _send(msg, to_email)
+    _send_via_gmail_api(msg, to_email)
     return True
 
 
@@ -56,14 +108,14 @@ def send_booking_confirmation(to_email: str, to_name: str, date_str: str, time_s
 
 Your consultation call has been confirmed! Here are the details:
 
-📅 Date: {date_str}
-🕐 Time: {time_str} (Malaysian Time / GMT+8)
-📍 Platform: Google Meet (link will be in the calendar invite)
+Date: {date_str}
+Time: {time_str} (Malaysian Time / GMT+8)
+Platform: Google Meet (link will be in the calendar invite)
 
 What to expect:
-• A focused 30-minute discussion about your project
-• Actionable insights on how AI can help your business
-• No pressure, no obligations
+- A focused 30-minute discussion about your project
+- Actionable insights on how AI can help your business
+- No pressure, no obligations
 
 If you need to reschedule, simply reply to this email.
 
@@ -74,13 +126,13 @@ Nida Rifda Chairuli
 NRC Labs | AI Automation & Data Intelligence
 """
     msg.attach(MIMEText(body, "plain"))
-    _send(msg, to_email)
+    _send_via_gmail_api(msg, to_email)
     return True
 
 
 def send_reschedule_email(to_email: str, to_name: str, slots: list[str]):
     """Send available time slots to client for rescheduling."""
-    slots_text = "\n".join([f"  • {slot}" for slot in slots])
+    slots_text = "\n".join([f"  - {slot}" for slot in slots])
 
     msg = MIMEMultipart()
     msg["From"] = f"{SENDER_NAME} <{GMAIL_ADDRESS}>"
@@ -100,7 +152,7 @@ Nida Rifda Chairuli
 NRC Labs | AI Automation & Data Intelligence
 """
     msg.attach(MIMEText(body, "plain"))
-    _send(msg, to_email)
+    _send_via_gmail_api(msg, to_email)
     return True
 
 
@@ -137,13 +189,5 @@ Nida Rifda Chairuli
 NRC Labs
 """
     msg.attach(MIMEText(body, "plain"))
-    _send(msg, to_email)
+    _send_via_gmail_api(msg, to_email)
     return True
-
-
-def _send(msg: MIMEMultipart, to_email: str):
-    """Send email via Gmail SMTP."""
-    with smtplib.SMTP("smtp.gmail.com", 587) as server:
-        server.starttls()
-        server.login(GMAIL_ADDRESS, GMAIL_APP_PASSWORD)
-        server.sendmail(GMAIL_ADDRESS, to_email, msg.as_string())
