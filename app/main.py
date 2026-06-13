@@ -93,6 +93,88 @@ async def handle_book_call(request: Request):
     return _thank_you_page("Inquiry Sent!", "Your booking request has been received. I'll get back to you within 24 hours.")
 
 
+@app.post("/webhook/cal")
+async def handle_cal_webhook(request: Request):
+    """Handle Cal.com booking webhook — sends Telegram notification."""
+    try:
+        payload = await request.json()
+        event_type = payload.get("triggerEvent", "")
+        booking = payload.get("payload", {})
+
+        # Extract booking details
+        name = ""
+        email = ""
+        attendees = booking.get("attendees", [])
+        if attendees:
+            name = attendees[0].get("name", "Unknown")
+            email = attendees[0].get("email", "")
+
+        title = booking.get("title", "Free Consultation")
+        start_raw = booking.get("startTime", "")
+        end_raw = booking.get("endTime", "")
+        meet_url = booking.get("metadata", {}).get("videoCallUrl", "")
+
+        # If no meet URL in metadata, check conferenceData
+        if not meet_url:
+            conference = booking.get("conferenceData", {})
+            if conference:
+                meet_url = conference.get("uri", "") or conference.get("url", "")
+
+        # Format date/time
+        date_str = ""
+        time_str = ""
+        if start_raw:
+            try:
+                start_dt = datetime.fromisoformat(start_raw.replace("Z", "+00:00"))
+                start_local = start_dt.astimezone(tz)
+                date_str = start_local.strftime("%A, %B %d, %Y")
+                time_str = start_local.strftime("%I:%M %p")
+            except Exception:
+                date_str = start_raw
+
+        # Build Telegram message based on event type
+        if event_type == "BOOKING_CREATED":
+            emoji = "📅"
+            header = "New Booking!"
+        elif event_type == "BOOKING_RESCHEDULED":
+            emoji = "🔄"
+            header = "Booking Rescheduled"
+        elif event_type == "BOOKING_CANCELLED":
+            emoji = "❌"
+            header = "Booking Cancelled"
+        else:
+            emoji = "📅"
+            header = "Booking Update"
+
+        message = (
+            f"{emoji} <b>{header}</b>\n\n"
+            f"👤 <b>{name}</b>\n"
+            f"📧 {email}\n"
+            f"📌 {title}\n"
+            f"📆 {date_str}\n"
+            f"🕐 {time_str}\n"
+        )
+        if meet_url:
+            message += f"🔗 <a href=\"{meet_url}\">Join Meeting</a>\n"
+
+        # Send to Telegram
+        async with httpx.AsyncClient() as client:
+            await client.post(
+                f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/sendMessage",
+                json={
+                    "chat_id": TELEGRAM_CHAT_ID,
+                    "text": message,
+                    "parse_mode": "HTML",
+                    "disable_web_page_preview": True,
+                },
+            )
+
+        return {"status": "ok"}
+    except Exception as e:
+        print(f"Cal webhook error: {e}")
+        return {"status": "error", "detail": str(e)}
+
+
 # ==================== TELEGRAM CALLBACK HANDLER ====================
 
 @app.post("/telegram/callback")
