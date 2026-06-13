@@ -71,7 +71,7 @@ def send_cv_email(to_email: str, to_name: str):
 Thank you for your interest in working together! As requested, please find my CV attached.
 
 I'd love to discuss how I can help with your project. Feel free to book a free consultation at:
-https://nidalabs.vercel.app/#contact
+https://cal.com/nidalabs/free-consultation
 
 Looking forward to connecting!
 
